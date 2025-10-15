@@ -1,7 +1,6 @@
 import express, { Router, Request, Response } from 'express';
 import { captureWebsite } from '../services/screenshotService.js';
 import { analyzeReadability } from '../services/readabilityService.js';
-import { analyzeAccessibility } from '../services/accessibilityService.js';
 import { analyzeWithGemini, analyzeLighthouse, generateRecommendations } from '../services/aiServices.js';
 import { analyzeWithReimagineWeb } from '../services/reimagineService.js';
 
