@@ -1,67 +1,59 @@
-import express, { Router, Request, Response } from "express";
-import ScanModel from "../models/Scan.js";
-import { captureWebsite } from "../services/screenshotService.js";
-import { analyzeAccessibility } from "../services/accessibilityService.js";
-import { analyzeReadability } from "../services/readabilityService.js";
-import {
-  analyzeWithGemini,
-  analyzeLighthouse,
-  generateRecommendations,
-} from "../services/aiServices.js";
-import { analyzeWithReimagineWeb } from "../services/reimagineService.js";
+import express, { Router, Request, Response } from 'express';
+import { captureWebsite } from '../services/screenshotService.js';
+import { analyzeReadability } from '../services/readabilityService.js';
+import { analyzeWithGemini, analyzeLighthouse, generateRecommendations } from '../services/aiServices.js';
+import { analyzeWithReimagineWeb } from '../services/reimagineService.js';
 
 const router: Router = express.Router();
 
 // POST /api/scan — Main endpoint with Lighthouse + Gemini
-router.post("/", async (req: Request, res: Response) => {
+router.post('/', async (req: Request, res: Response) => {
   try {
     const { url } = req.body;
-    if (!url) return res.status(400).json({ error: "URL is required" });
+    if (!url) return res.status(400).json({ error: 'URL is required' });
 
     // Validate URL
     try {
       new URL(url);
     } catch {
-      return res.status(400).json({ error: "Invalid URL format" });
+      return res.status(400).json({ error: 'Invalid URL format' });
     }
 
-    console.log(`\n${"=".repeat(70)}`);
+    console.log(`\n${'='.repeat(70)}`);
     console.log(`📊 HYBRID ANALYSIS: Lighthouse + Gemini + Readability`);
-    console.log(`${"=".repeat(70)}\n`);
+    console.log(`${'='.repeat(70)}\n`);
     console.log(`🔗 URL: ${url}\n`);
 
     // Step 1: Capture website
-    console.log("⏳ Step 1: Capturing website screenshot...");
-    const { screenshot, html, textContent, domElements } = await captureWebsite(
-      url
-    );
-    console.log("✅ Website captured\n");
+    console.log('⏳ Step 1: Capturing website screenshot...');
+    const { screenshot, html, textContent, domElements } = await captureWebsite(url);
+    console.log('✅ Website captured\n');
 
     // Step 2: Run Lighthouse Analysis (most accurate for accessibility)
-    console.log("⏳ Step 2: Running Google Lighthouse analysis...");
+    console.log('⏳ Step 2: Running Google Lighthouse analysis...');
     const lighthouseResult = await analyzeLighthouse(url);
-    console.log("✅ Lighthouse analysis completed\n");
+    console.log('✅ Lighthouse analysis completed\n');
 
     // Step 3: Analyze Readability
-    console.log("⏳ Step 3: Analyzing readability...");
+    console.log('⏳ Step 3: Analyzing readability...');
     const readabilityResult = analyzeReadability(textContent);
     console.log(`   Score: ${readabilityResult.score}`);
-    console.log("✅ Readability analyzed\n");
+    console.log('✅ Readability analyzed\n');
 
     // Step 4: Gemini Visual Analysis
-    console.log("⏳ Step 4: Running Gemini visual analysis...");
+    console.log('⏳ Step 4: Running Gemini visual analysis...');
     const geminiAnalysis = await analyzeWithGemini(screenshot);
     console.log(`   Clarity Score: ${geminiAnalysis.clarityScore}`);
-    console.log("✅ Gemini analysis completed\n");
+    console.log('✅ Gemini analysis completed\n');
 
     // Step 5: ReimagineWeb Analysis (optional UX metrics)
-    console.log("⏳ Step 5: Running ReimagineWeb analysis...");
+    console.log('⏳ Step 5: Running ReimagineWeb analysis...');
     const reimagineResult = await analyzeWithReimagineWeb(url);
-    console.log("✅ ReimagineWeb analysis completed\n");
+    console.log('✅ ReimagineWeb analysis completed\n');
 
     // Step 6: Calculate Final Scores
-    console.log("⏳ Step 6: Computing final scores...");
-
+    console.log('⏳ Step 6: Computing final scores...');
+    
     const visualClarityScore = geminiAnalysis.clarityScore;
     const accessibilityScore = lighthouseResult.accessibilityScore;
     const readabilityScore = readabilityResult.score;
@@ -77,17 +69,17 @@ router.post("/", async (req: Request, res: Response) => {
 
     // Weighted overall score
     const overallScore = Math.round(
-      visualClarityScore * 0.2 +
-        accessibilityScore * 0.3 +
-        readabilityScore * 0.2 +
-        performanceScore * 0.15 +
-        reimagineScore * 0.15
+      visualClarityScore * 0.20 +
+      accessibilityScore * 0.30 +
+      readabilityScore * 0.20 +
+      performanceScore * 0.15 +
+      reimagineScore * 0.15
     );
 
     console.log(`\n   📈 OVERALL SCORE: ${overallScore}/100\n`);
 
     // Step 7: Generate Recommendations
-    console.log("⏳ Step 7: Generating recommendations...");
+    console.log('⏳ Step 7: Generating recommendations...');
     const recommendations = generateRecommendations(
       accessibilityScore,
       readabilityScore,
@@ -100,13 +92,13 @@ router.post("/", async (req: Request, res: Response) => {
     // Step 8: Prepare heatmap data
     const heatmapData = {
       zones: geminiAnalysis.attentionZones,
-      maxIntensity: 1.0,
+      maxIntensity: 1.0
     };
 
-    // Step 9: Save to MongoDB
-    console.log("⏳ Step 9: Saving scan to database...");
-    const scan = {
+    // Build response data
+    const scanData = {
       url,
+      timestamp: new Date().toISOString(),
       screenshot,
       scores: {
         visualClarity: Math.round(visualClarityScore),
@@ -114,54 +106,55 @@ router.post("/", async (req: Request, res: Response) => {
         readability: Math.round(readabilityScore),
         reimagineUX: Math.round(reimagineScore),
         focusAccuracy: Math.round(performanceScore),
-        overall: overallScore,
+        overall: overallScore
       },
       metrics: {
         colorContrast: {
           passAA: accessibilityScore > 70,
           passAAA: accessibilityScore > 85,
-          issues: lighthouseResult.accessibilityIssues,
+          issues: lighthouseResult.accessibilityIssues
         },
         textReadability: {
           fleschScore: readabilityResult.fleschScore,
           gradeLevel: readabilityResult.gradeLevel,
-          issues: readabilityResult.issues,
+          issues: readabilityResult.issues
         },
         accessibility: {
           missingAlt: 0,
           ariaIssues: lighthouseResult.accessibilityIssues.length,
           keyboardNav: accessibilityScore > 75,
-          issues: lighthouseResult.accessibilityIssues,
+          issues: lighthouseResult.accessibilityIssues
         },
         reimagineWeb: reimagineResult.metrics,
         lighthouse: {
           performance: lighthouseResult.performanceScore,
           accessibility: lighthouseResult.accessibilityScore,
           bestPractices: lighthouseResult.bestPracticesScore,
-          seo: lighthouseResult.seoScore,
-        },
+          seo: lighthouseResult.seoScore
+        }
       },
       aiAnalysis: {
         visualIssues: geminiAnalysis.visualIssues,
         layoutProblems: geminiAnalysis.layoutProblems,
-        attentionZones: geminiAnalysis.attentionZones,
+        attentionZones: geminiAnalysis.attentionZones
       },
       recommendations,
-      heatmapData,
+      heatmapData
     };
 
-    console.log("✅ Scan saved to database");
-    console.log(`${"=".repeat(70)}\n`);
+    console.log('✅ Analysis completed successfully');
+    console.log(`${'='.repeat(70)}\n`);
 
     res.json({
       success: true,
-      data: scan,
+      data: scanData
     });
+
   } catch (error: any) {
-    console.error("❌ Scan error:", error);
+    console.error('❌ Scan error:', error);
     res.status(500).json({
-      error: "Failed to analyze website",
-      message: error.message,
+      error: 'Failed to analyze website',
+      message: error.message
     });
   }
 });
