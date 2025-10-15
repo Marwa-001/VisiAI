@@ -2,7 +2,8 @@ import { useState } from 'react';
 import { Eye, Activity, BarChart3, Globe, Zap, ExternalLink } from 'lucide-react';
 import './visiai.css';
 
-const API_BASE_URL = 'http://localhost:5000/api';
+// Update this to use your deployed backend URL
+const API_BASE_URL = import.meta.env.VITE_API_URL || 'https://visiai-backend.onrender.com/api';
 
 // Type definitions
 interface Scan {
@@ -70,8 +71,9 @@ export default function VisiAI() {
         setCurrentScan(data.data);
         setCurrentPage('dashboard');
       } else setError(data.error || 'Scan failed');
-    } catch {
-      setError('Failed to connect to server.');
+    } catch (err) {
+      console.error('Scan error:', err);
+      setError('Failed to connect to server. Please try again.');
     } finally {
       setLoading(false);
     }
