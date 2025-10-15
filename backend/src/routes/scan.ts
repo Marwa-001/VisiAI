@@ -1,7 +1,5 @@
 import express, { Router, Request, Response } from 'express';
-import ScanModel from '../models/Scan.js';
 import { captureWebsite } from '../services/screenshotService.js';
-import { analyzeAccessibility } from '../services/accessibilityService.js';
 import { analyzeReadability } from '../services/readabilityService.js';
 import { analyzeWithGemini, analyzeLighthouse, generateRecommendations } from '../services/aiServices.js';
 import { analyzeWithReimagineWeb } from '../services/reimagineService.js';
@@ -97,10 +95,10 @@ router.post('/', async (req: Request, res: Response) => {
       maxIntensity: 1.0
     };
 
-    // Step 9: Save to MongoDB
-    console.log('⏳ Step 9: Saving scan to database...');
-    const scan = new ScanModel({
+    // Build response data
+    const scanData = {
       url,
+      timestamp: new Date().toISOString(),
       screenshot,
       scores: {
         visualClarity: Math.round(visualClarityScore),
@@ -142,16 +140,14 @@ router.post('/', async (req: Request, res: Response) => {
       },
       recommendations,
       heatmapData
-    });
+    };
 
-    await scan.save();
-    console.log('✅ Scan saved to database');
+    console.log('✅ Analysis completed successfully');
     console.log(`${'='.repeat(70)}\n`);
 
     res.json({
       success: true,
-      scanId: scan._id,
-      data: scan
+      data: scanData
     });
 
   } catch (error: any) {

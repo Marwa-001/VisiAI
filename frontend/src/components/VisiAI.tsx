@@ -1,13 +1,11 @@
-import { useState, useEffect } from 'react';
-import { Eye, Activity, BarChart3,  Globe, Zap, History, ExternalLink } from 'lucide-react';
+import { useState } from 'react';
+import { Eye, Activity, BarChart3, Globe, Zap, ExternalLink } from 'lucide-react';
 import './visiai.css';
 
 const API_BASE_URL = 'http://localhost:5000/api';
 
 // Type definitions
 interface Scan {
-  _id?: string;
-  id?: string;
   url: string;
   timestamp: string;
   screenshot?: string;
@@ -48,26 +46,11 @@ interface Scan {
 }
 
 export default function VisiAI() {
-  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard' | 'history'>('home');
+  const [currentPage, setCurrentPage] = useState<'home' | 'dashboard'>('home');
   const [url, setUrl] = useState('');
   const [loading, setLoading] = useState(false);
   const [currentScan, setCurrentScan] = useState<Scan | null>(null);
-  const [scanHistory, setScanHistory] = useState<Scan[]>([]);
   const [error, setError] = useState('');
-
-  useEffect(() => {
-    if (currentPage === 'history') fetchHistory();
-  }, [currentPage]);
-
-  const fetchHistory = async () => {
-    try {
-      const res = await fetch(`${API_BASE_URL}/results`);
-      const data = await res.json();
-      if (data.success) setScanHistory(data.data);
-    } catch {
-      console.error('Failed to fetch history');
-    }
-  };
 
   const handleScan = async () => {
     if (!url) {
@@ -94,18 +77,11 @@ export default function VisiAI() {
     }
   };
 
-  const viewScan = async (id: string) => {
-    const res = await fetch(`${API_BASE_URL}/results/${id}`);
-    const data = await res.json();
-    if (data.success) {
-      setCurrentScan(data.data);
-      setCurrentPage('dashboard');
-    }
-  };
-
-  const deleteScan = async (id: string) => {
-    await fetch(`${API_BASE_URL}/results/${id}`, { method: 'DELETE' });
-    fetchHistory();
+  const handleNewScan = () => {
+    setCurrentPage('home');
+    setCurrentScan(null);
+    setUrl('');
+    setError('');
   };
 
   return (
@@ -124,12 +100,11 @@ export default function VisiAI() {
             >
               Home
             </button>
-            <button
-              className={currentPage === 'history' ? 'active' : ''}
-              onClick={() => setCurrentPage('history')}
-            >
-              <History size={16} /> History
-            </button>
+            {currentScan && (
+              <button onClick={handleNewScan}>
+                New Scan
+              </button>
+            )}
           </div>
         </div>
       </nav>
@@ -175,11 +150,6 @@ export default function VisiAI() {
               <h3>Readability Score</h3>
               <p>Analyzes how easy your text is to read.</p>
             </div>
-            {/* <div className="feature-card">
-              <FileCheck size={28} />
-              <h3>Reimagine UX</h3>
-              <p>Professional UX metrics for modern design.</p>
-            </div> */}
             <div className="feature-card">
               <Globe size={28} />
               <h3>Cognitive Heatmap</h3>
@@ -203,7 +173,7 @@ export default function VisiAI() {
             </a>
             <p>Analyzed: {new Date(currentScan.timestamp).toLocaleString()}</p>
             
-            {/* ✅ Screenshot Display */}
+            {/* Screenshot Display */}
             {currentScan.screenshot && (
               <div style={{ marginTop: '1rem', marginBottom: '1rem', borderRadius: '8px', overflow: 'hidden', border: '1px solid #e5e7eb' }}>
                 <img 
@@ -231,17 +201,13 @@ export default function VisiAI() {
               <h4>Readability</h4>
               <div className="value">{currentScan.scores.readability}</div>
             </div>
-            {/* <div className="score-card">
-              <h4>Reimagine UX</h4>
-              <div className="value">{currentScan.scores.reimagineUX}</div>
-            </div> */}
             <div className="score-card">
               <h4>Focus Accuracy</h4>
               <div className="value">{currentScan.scores.focusAccuracy}</div>
             </div>
           </div>
 
-          {/* ✅ AI VISION ANALYSIS - NEW SECTION */}
+          {/* AI VISION ANALYSIS */}
           {currentScan.aiAnalysis && (
             <div className="card">
               <h3>🤖 AI Vision Analysis</h3>
@@ -314,7 +280,7 @@ export default function VisiAI() {
             </div>
           )}
 
-          {/* ✅ Heatmap Visualization */}
+          {/* Heatmap Visualization */}
           {currentScan.heatmapData && currentScan.heatmapData.zones && (
             <div className="card">
               <h3>Visual Attention Heatmap</h3>
@@ -393,7 +359,7 @@ export default function VisiAI() {
             </div>
           )}
 
-          {/* ✅ Detailed Metrics Breakdown */}
+          {/* Detailed Metrics Breakdown */}
           {currentScan.metrics && (
             <div className="card">
               <h3>Detailed Analysis</h3>
@@ -468,24 +434,6 @@ export default function VisiAI() {
                 </div>
               )}
             </div>
-          )}
-        </div>
-      )}
-
-      {currentPage === 'history' && (
-        <div className="dashboard">
-          {scanHistory.length === 0 ? (
-            <p>No scans yet.</p>
-          ) : (
-            scanHistory.map((s) => (
-              <div key={s._id} className="history-item">
-                <span>{s.url}</span>
-                <div>
-                  <button className="view-btn" onClick={() => viewScan(s._id!)}>View</button>
-                  <button className="delete-btn" onClick={() => deleteScan(s._id!)}>Delete</button>
-                </div>
-              </div>
-            ))
           )}
         </div>
       )}
